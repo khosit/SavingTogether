@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 40%, #F0FDF4 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+.animate-fade-up   { animation: fadeInUp   0.4s ease both; }
+.animate-fade-down { animation: fadeInDown 0.35s ease both; }
+.animate-scale-in  { animation: scaleIn    0.3s ease both; }
+.animate-pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+
+.glass {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.8);
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 2px 20px rgba(5,150,105,0.07), 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.card-gradient {
+  background: linear-gradient(135deg, #059669 0%, #047857 40%, #10B981 100%);
+  border-radius: 24px;
+}
+
+.card-gradient-danger {
+  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 40%, #EA580C 100%);
+  border-radius: 24px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065F46 100%);
+  color: white;
+  font-weight: 600;
+  border-radius: 16px;
+  padding: 14px 24px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 4px 20px rgba(5,150,105,0.35);
+}
+.btn-primary:hover  { opacity: 0.92; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); opacity: 0.85; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+input, textarea, button {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Safe area padding helper for hero headers on notched phones */
+.safe-top {
+  padding-top: max(48px, calc(env(safe-area-inset-top) + 12px));
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: fadeInUp 0.35s ease both;
+}
+
+/* ── Responsive layout classes (guaranteed via plain CSS, no Tailwind) ── */
+
+/* Sidebar: hidden on mobile, flex column on desktop */
+.sidebar-desktop {
+  display: none;
+  flex-direction: column;
+}
+
+/* Main area: no left margin on mobile */
+.main-with-sidebar {
+  margin-left: 0;
+}
+
+/* Bottom nav: visible on mobile only */
+.mobile-nav-only {
+  display: block;
+}
+
+/* Content column: no outer padding — pages handle text padding internally */
+.layout-content {
+  min-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .sidebar-desktop {
+    display: flex;
+  }
+  .main-with-sidebar {
+    margin-left: 220px;
+  }
+  .mobile-nav-only {
+    display: none;
+  }
+  .card {
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  .card:hover {
+    box-shadow: 0 4px 28px rgba(5,150,105,0.11), 0 2px 8px rgba(0,0,0,0.06);
+  }
+}
+
