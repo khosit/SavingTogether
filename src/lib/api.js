@@ -1,8 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://superkong.bsite.net';
+// Production uses the Netlify same-origin proxy to avoid browser CORS.
+// Set VITE_API_BASE_URL only when calling the backend directly.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: options.body ? { 'Content-Type': 'application/json', ...options.headers } : options.headers,
     ...options,
   });
 
