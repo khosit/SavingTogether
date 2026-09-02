@@ -75,7 +75,6 @@ export default function CouplePage() {
 
   const [codeInput, setCodeInput] = useState('');
 
-  const isMember = coupleInfo?.userKeyA === accountUserKey || coupleInfo?.userKeyB === accountUserKey;
   const ownSide = coupleInfo?.userKeyB === accountUserKey ? coupleDashboard?.userB : coupleDashboard?.userA;
   const partnerSide = coupleInfo?.userKeyB === accountUserKey ? coupleDashboard?.userA : coupleDashboard?.userB;
   const userA = users.A;
@@ -111,7 +110,9 @@ export default function CouplePage() {
     await linkCouple(codeInput.trim());
   }
 
-  if (!coupleLinked || !isMember) return (
+  // The first member can have a valid couple code while the second member is
+  // still missing, so do not require both membership keys to render the page.
+  if (!coupleLinked || !coupleInfo) return (
     <div className="min-h-screen pb-28">
       <div
         className="px-5 pt-12 pb-20 text-center relative overflow-hidden"

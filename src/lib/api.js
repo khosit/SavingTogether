@@ -17,7 +17,18 @@ async function request(path, options = {}) {
 export const api = {
   getCategories: () => request('/api/Categories'),
   getUser: userKey => request(`/api/Users/${encodeURIComponent(userKey)}`),
-  saveUser: (userKey, profile) => request(`/api/Users/${encodeURIComponent(userKey)}`, {
+  createUser: (userKey, profile) => request('/api/Users', {
+    method: 'POST',
+    body: JSON.stringify({
+      userKey,
+      name: profile.name,
+      monthlyIncome: Number(profile.monthlyIncome) || 0,
+      fixedExpenses: Number(profile.fixedExpenses) || 0,
+      savingAmount: Number(profile.savingAmount) || 0,
+      avatar: profile.avatar || '👤',
+    }),
+  }),
+  updateUser: (userKey, profile) => request(`/api/Users/${encodeURIComponent(userKey)}`, {
     method: 'PUT',
     body: JSON.stringify({
       name: profile.name,

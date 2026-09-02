@@ -151,13 +151,13 @@ export function AppProvider({ children }) {
   }
 
   async function setupUser(userKey, profile) {
-    const user = await api.saveUser(userKey, profile);
+    const user = await api.createUser(userKey, profile);
     setAccountUserKey(userKey);
     setUsers({ A: { ...user, savingsRate: profile.savingsRate ?? 45 }, B: null });
   }
 
   async function updateUser(profile) {
-    const user = await api.saveUser(accountUserKey, profile);
+    const user = await api.updateUser(accountUserKey, profile);
     setUsers(prev => ({ ...prev, A: { ...user, savingsRate: profile.savingsRate ?? 45 } }));
   }
 
