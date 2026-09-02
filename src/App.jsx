@@ -8,9 +8,22 @@ import AddExpensePage from "./pages/AddExpensePage";
 import CouplePage from "./pages/CouplePage";
 import HistoryPage from "./pages/HistoryPage";
 import SettingsPage from "./pages/SettingsPage";
+import LoginPage from "./pages/LoginPage";
 
 function AppRoutes() {
-  const { users } = useApp();
+  const { users, isLoading, apiError, accountUserKey } = useApp();
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-emerald-700 font-semibold">Loading your account…</div>;
+  }
+
+  if (apiError && !users.A) {
+    return <LoginPage />;
+  }
+
+  if (!accountUserKey) {
+    return window.location.hash === '#setup' ? <SetupPage /> : <LoginPage />;
+  }
   const anyUserSetup = users.A || users.B;
 
   if (!anyUserSetup) {

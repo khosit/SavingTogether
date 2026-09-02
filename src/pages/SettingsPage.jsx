@@ -4,7 +4,7 @@ import { useToast } from '../components/Toast';
 import { Check } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { currentUser, updateUser, calcDailyBudget } = useApp();
+  const { currentUser, updateUser, calcDailyBudget, logout } = useApp();
   const { showToast } = useToast();
 
   const [form, setForm] = useState({
@@ -22,9 +22,9 @@ export default function SettingsPage() {
     ? calcDailyBudget(parseFloat(form.monthlyIncome) || 0, parseFloat(form.fixedExpenses) || 0, form.savingsRate)
     : null;
 
-  function handleSave(e) {
+  async function handleSave(e) {
     e.preventDefault();
-    updateUser({
+    await updateUser({
       name: form.name,
       monthlyIncome: parseFloat(form.monthlyIncome) || 0,
       fixedExpenses: parseFloat(form.fixedExpenses) || 0,
@@ -182,6 +182,10 @@ export default function SettingsPage() {
           <p className="text-sm font-semibold font-mono" style={{ color: '#047857' }}>((Income × (100% − Savings Rate)) − Fixed Expenses) ÷ 30</p>
           <p className="text-xs mt-1" style={{ color: '#059669' }}>{form.savingsRate}% of your income is reserved for savings &amp; investments.</p>
         </div>
+
+        <button type="button" onClick={logout} className="w-full text-sm font-semibold text-rose-500 py-3">
+          Log out
+        </button>
       </div>
     </div>
   );

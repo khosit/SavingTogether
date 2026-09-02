@@ -3,15 +3,16 @@ import { useApp } from "../context/AppContext";
 
 export default function SetupPage() {
   const { setupUser } = useApp();
+  const [userKey, setUserKey] = useState('');
   const [form, setForm] = useState({ name: "", monthlyIncome: "", fixedExpenses: "", savingsRate: 45, avatar: "👩" });
 
   const avatars = ["👨","👩","🧑","🐻","🐼","🦊","🐱","🐯"];
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const income = parseFloat(form.monthlyIncome) || 0;
     const fixed = parseFloat(form.fixedExpenses) || 0;
-    setupUser('A', { name: form.name, monthlyIncome: income, fixedExpenses: fixed, savingsRate: Number(form.savingsRate), avatar: form.avatar });
+    await setupUser(userKey.trim(), { name: form.name, monthlyIncome: income, fixedExpenses: fixed, savingsRate: Number(form.savingsRate), avatar: form.avatar });
   }
 
   const dailyPreview = form.monthlyIncome
@@ -29,6 +30,17 @@ export default function SetupPage() {
           </div>
 
           <div className="card p-5 space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Choose a UserKey</label>
+              <input
+                required type="text" value={userKey}
+                onChange={e => setUserKey(e.target.value.toUpperCase())}
+                placeholder="e.g. ALEX001"
+                className="w-full rounded-2xl px-4 py-3 text-slate-700 font-medium focus:outline-none text-sm"
+                style={{ background: "#ECFDF5", border: "2px solid transparent" }}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Use this key next time you log in.</p>
+            </div>
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Avatar</label>
               <div className="flex gap-2 flex-wrap">
@@ -111,7 +123,7 @@ export default function SetupPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!form.name || !form.monthlyIncome}
+              disabled={!userKey.trim() || !form.name || !form.monthlyIncome}
               className="btn-primary w-full"
             >
               Save & Start Tracking →

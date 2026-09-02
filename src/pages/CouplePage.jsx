@@ -69,16 +69,25 @@ function UserCard({ user, spent, budget, label, isActive, streak }) {
 
 export default function CouplePage() {
   const {
-    users, activeUser, coupleLinked, linkCouple, unlinkCouple,
-    coupleCode, getTodayRecord, getSpentAmount, getStreakCount,
+    users, accountUserKey, coupleLinked, linkCouple, unlinkCouple, coupleCode, coupleInfo, coupleDashboard, partnerToday,
+    getTodayRecord, getSpentAmount, getStreakCount,
   } = useApp();
 
   const [codeInput, setCodeInput] = useState('');
 
+  const isMember = coupleInfo?.userKeyA === accountUserKey || coupleInfo?.userKeyB === accountUserKey;
+  const ownSide = coupleInfo?.userKeyB === accountUserKey ? coupleDashboard?.userB : coupleDashboard?.userA;
+  const partnerSide = coupleInfo?.userKeyB === accountUserKey ? coupleDashboard?.userA : coupleDashboard?.userB;
   const userA = users.A;
-  const userB = users.B;
+  const userB = users.B || (partnerSide ? {
+    name: partnerSide.name,
+    avatar: partnerSide.avatar,
+    dailyBudget: partnerSide.budget,
+  } : null);
 
   function getRecordData(key) {
+    const summary = key === 'A' ? ownSide : partnerSide;
+    if (summary) return { rec: null, spent: summary.spent, budget: summary.budget };
     const rec = getTodayRecord(key);
     const spent = rec ? getSpentAmount(rec) : 0;
     const budget = rec ? rec.availableBudget : (users[key]?.dailyBudget || 0);
@@ -87,21 +96,22 @@ export default function CouplePage() {
 
   const dataA = getRecordData('A');
   const dataB = getRecordData('B');
+  const ownToday = getTodayRecord('A');
 
   const combined = dataA.spent + dataB.spent;
   const combinedBudget = dataA.budget + dataB.budget;
   const combinedRemaining = combinedBudget - combined;
   const isOver = combinedRemaining < 0;
 
-  const streakA = getStreakCount('A');
-  const streakB = getStreakCount('B');
+  const streakA = ownSide?.streak ?? getStreakCount('A');
+  const streakB = partnerSide?.streak ?? getStreakCount('B');
 
-  function handleLink() {
+  async function handleLink() {
     if (!codeInput.trim()) return;
-    linkCouple(codeInput.trim());
+    await linkCouple(codeInput.trim());
   }
 
-  if (!coupleLinked) return (
+  if (!coupleLinked || !isMember) return (
     <div className="min-h-screen pb-28">
       <div
         className="px-5 pt-12 pb-20 text-center relative overflow-hidden"
@@ -220,8 +230,34 @@ export default function CouplePage() {
       <div className="px-4 -mt-10 space-y-4">
         {/* Side-by-side user cards */}
         <div className="flex gap-3 animate-fade-up">
-          <UserCard user={userA} spent={dataA.spent} budget={dataA.budget} label="Partner A" isActive={activeUser === 'A'} streak={streakA} />
-          <UserCard user={userB} spent={dataB.spent} budget={dataB.budget} label="Partner B" isActive={activeUser === 'B'} streak={streakB} />
+          <UserCard user={userA} spent={dataA.spent} budget={dataA.budget} label="You" isActive={true} streak={streakA} />
+          <UserCard user={userB} spent={dataB.spent} budget={dataB.budget} label="Partner" isActive={false} streak={streakB} />
+        </div>
+
+        <div className="card p-5 animate-fade-up" style={{ animationDelay: '0.04s' }}>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Today's Expenses</p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'You', record: ownToday },
+              { label: 'Partner', record: partnerToday },
+            ].map(({ label, record }) => (
+              <div key={label} className="rounded-2xl p-3" style={{ background: '#F0FDF4' }}>
+                <p className="text-xs font-bold text-slate-700 mb-2">{label}</p>
+                {!record?.expenses?.length ? (
+                  <p className="text-[11px] text-slate-400">No expenses yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {record.expenses.map(expense => (
+                      <div key={expense.id} className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-slate-500 truncate">{expense.note || expense.category || 'Expense'}</p>
+                        <p className="text-[11px] font-bold text-slate-700 whitespace-nowrap">RM {Number(expense.amount).toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Winner */}
@@ -246,7 +282,7 @@ export default function CouplePage() {
               )}
             </div>
           ) : (
-            <p className="text-slate-400 text-sm text-center">Set up both profiles to see the challenge</p>
+            <p className="text-slate-400 text-sm text-center">Share your couple code to connect a partner</p>
           )}
         </div>
 

@@ -21,11 +21,11 @@ export default function AddExpensePage() {
   const willOver    = amount && parseFloat(amount) > remaining;
   const selectedCat = EXPENSE_CATEGORIES.find(c => c.id === category) || EXPENSE_CATEGORIES[0];
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const val = parseFloat(amount);
     if (!val || val <= 0) return;
-    addExpense(val, category, note);
+    await addExpense(val, category, note);
     showToast(`${selectedCat.icon} RM ${val.toFixed(2)} added!`, 'success');
     setSubmitted(true);
     setTimeout(() => navigate('/'), 700);

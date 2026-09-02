@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { api } from '../lib/api';
 
 const AppContext = createContext(null);
 
@@ -36,6 +37,7 @@ const EXPENSE_CATEGORIES = [
 export function AppProvider({ children }) {
   // A local account owns one profile. Keep the B slot as a reserved partner
   // projection so a future server-backed couple connection can populate it.
+  const [accountUserKey, setAccountUserKey] = useState(() => getStorage('sc_accountUserKey', ''));
   const [activeUser] = useState('A');
   const [users, setUsers] = useState(() => {
     const stored = getStorage('sc_users', { A: null, B: null });
@@ -45,12 +47,51 @@ export function AppProvider({ children }) {
   const [dailyRecords, setDailyRecords] = useState(() => getStorage('sc_dailyRecords', {}));
   const [coupleLinked, setCoupleLinked] = useState(() => getStorage('sc_coupleLinked', false));
   const [coupleCode, setCoupleCode] = useState(() => getStorage('sc_coupleCode', ''));
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState('');
+  const [coupleDashboard, setCoupleDashboard] = useState(null);
+  const [coupleInfo, setCoupleInfo] = useState(null);
+  const [partnerToday, setPartnerToday] = useState(null);
+  const [expenseCategories, setExpenseCategories] = useState(EXPENSE_CATEGORIES);
 
   useEffect(() => { setStorage('sc_activeUser', activeUser); }, [activeUser]);
   useEffect(() => { setStorage('sc_users', users); }, [users]);
   useEffect(() => { setStorage('sc_dailyRecords', dailyRecords); }, [dailyRecords]);
   useEffect(() => { setStorage('sc_coupleLinked', coupleLinked); }, [coupleLinked]);
   useEffect(() => { setStorage('sc_coupleCode', coupleCode); }, [coupleCode]);
+  useEffect(() => { setStorage('sc_accountUserKey', accountUserKey); }, [accountUserKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBackendData() {
+      if (!accountUserKey) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const [user, categories, records, couple, dashboard] = await Promise.all([
+          api.getUser(accountUserKey), api.getCategories(), api.getRecords(accountUserKey), api.getCouple(accountUserKey).catch(() => null),
+          api.getCoupleDashboard(accountUserKey).catch(() => null),
+        ]);
+        if (cancelled) return;
+        setUsers({ A: { ...user, savingsRate: 45 }, B: null });
+        setDailyRecords(Object.fromEntries((records || []).map(record => [`A_${record.date}`, record])));
+        if (categories?.length) setExpenseCategories(categories);
+        setCoupleLinked(Boolean(couple?.isLinked || couple?.coupleCode));
+        setCoupleCode(couple?.coupleCode || '');
+        setCoupleInfo(couple);
+        setCoupleDashboard(dashboard);
+        const partnerKey = couple && (couple.userKeyA === accountUserKey ? couple.userKeyB : couple.userKeyA);
+        setPartnerToday(partnerKey ? await api.getToday(partnerKey).catch(() => null) : null);
+      } catch (error) {
+        if (!cancelled) setApiError(error.message);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    loadBackendData();
+    return () => { cancelled = true; };
+  }, [accountUserKey]);
 
   const currentUser = users[activeUser];
   const partnerKey = activeUser === 'A' ? 'B' : 'A';
@@ -67,7 +108,7 @@ export function AppProvider({ children }) {
     const user = users[userKey];
     if (!user) return null;
 
-    const baseBudget = calcDailyBudget(user.monthlyIncome, user.fixedExpenses, user.savingsRate ?? 45);
+    const baseBudget = user.dailyBudget ?? calcDailyBudget(user.monthlyIncome, user.fixedExpenses, user.savingsRate ?? 45);
 
     // calculate carryOver from yesterday
     const yesterday = new Date(date);
@@ -97,66 +138,66 @@ export function AppProvider({ children }) {
     return getOrCreateDayRecord(userKey, TODAY());
   }
 
-  function saveDayRecord(record) {
-    const key = getUserRecordKey(record.userKey, record.date);
-    setDailyRecords(prev => ({ ...prev, [key]: record }));
+  async function addExpense(amount, category, note) {
+    await api.addExpense(accountUserKey, { amount: Number(amount), category, note });
+    const record = await api.getToday(accountUserKey);
+    if (record) setDailyRecords(prev => ({ ...prev, [`A_${record.date}`]: record }));
   }
 
-  function addExpense(amount, category, note) {
-    const today = TODAY();
-    const record = getTodayRecord() || getOrCreateDayRecord(activeUser, today);
-    const updated = {
-      ...record,
-      expenses: [
-        ...record.expenses,
-        {
-          id: Date.now(),
-          amount,
-          category,
-          note,
-          time: new Date().toISOString(),
-        },
-      ],
-    };
-    saveDayRecord(updated);
+  async function deleteExpense(expenseId) {
+    await api.deleteExpense(accountUserKey, expenseId);
+    const record = await api.getToday(accountUserKey);
+    if (record) setDailyRecords(prev => ({ ...prev, [`A_${record.date}`]: record }));
   }
 
-  function deleteExpense(expenseId) {
-    const record = getTodayRecord();
-    if (!record) return;
-    const updated = {
-      ...record,
-      expenses: record.expenses.filter(e => e.id !== expenseId),
-    };
-    saveDayRecord(updated);
+  async function setupUser(userKey, profile) {
+    const user = await api.saveUser(userKey, profile);
+    setAccountUserKey(userKey);
+    setUsers({ A: { ...user, savingsRate: profile.savingsRate ?? 45 }, B: null });
   }
 
-  function setupUser(userKey, profile) {
-    const daily = calcDailyBudget(profile.monthlyIncome, profile.fixedExpenses, profile.savingsRate ?? 45);
-    setUsers(prev => ({
-      ...prev,
-      A: { ...profile, dailyBudget: daily },
-      B: null,
-    }));
+  async function updateUser(profile) {
+    const user = await api.saveUser(accountUserKey, profile);
+    setUsers(prev => ({ ...prev, A: { ...user, savingsRate: profile.savingsRate ?? 45 } }));
   }
 
-  function updateUser(profile) {
-    const daily = calcDailyBudget(profile.monthlyIncome, profile.fixedExpenses, profile.savingsRate ?? 45);
-    setUsers(prev => ({
-      ...prev,
-      A: { ...profile, dailyBudget: daily },
-      B: prev.B,
-    }));
+  async function login(userKey) {
+    const user = await api.getUser(userKey);
+    setApiError('');
+    setUsers({ A: { ...user, savingsRate: 45 }, B: null });
+    setAccountUserKey(userKey);
+    setIsLoading(true);
   }
 
-  function linkCouple(code) {
-    setCoupleCode(code);
-    setCoupleLinked(true);
-  }
-
-  function unlinkCouple() {
+  function logout() {
+    setAccountUserKey('');
+    setUsers({ A: null, B: null });
+    setDailyRecords({});
     setCoupleLinked(false);
     setCoupleCode('');
+    setCoupleInfo(null);
+    setCoupleDashboard(null);
+  }
+
+  async function linkCouple(code) {
+    const couple = await api.linkCouple(code, accountUserKey);
+    setCoupleCode(code);
+    // A couple code is usable while waiting for the second member; the
+    // backend may reserve it before isLinked becomes true.
+    setCoupleLinked(Boolean(couple?.isLinked || couple?.coupleCode || code));
+    setCoupleInfo(couple);
+    setCoupleDashboard(await api.getCoupleDashboard(accountUserKey).catch(() => null));
+    const partnerKey = couple?.userKeyA === accountUserKey ? couple?.userKeyB : couple?.userKeyA;
+    setPartnerToday(partnerKey ? await api.getToday(partnerKey).catch(() => null) : null);
+  }
+
+  async function unlinkCouple() {
+    await api.unlinkCouple(accountUserKey);
+    setCoupleLinked(false);
+    setCoupleCode('');
+    setCoupleInfo(null);
+    setCoupleDashboard(null);
+    setPartnerToday(null);
   }
 
   function getMonthRecords(userKey, year, month) {
@@ -209,17 +250,21 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         activeUser,
+        accountUserKey,
         users,
         currentUser,
         partner,
         partnerKey,
         coupleLinked,
         coupleCode,
-        EXPENSE_CATEGORIES,
+        coupleInfo,
+        EXPENSE_CATEGORIES: expenseCategories,
         addExpense,
         deleteExpense,
         setupUser,
         updateUser,
+        login,
+        logout,
         linkCouple,
         unlinkCouple,
         getTodayRecord,
@@ -230,6 +275,10 @@ export function AppProvider({ children }) {
         calcDailyBudget,
         getAllDayRecords,
         TODAY,
+        isLoading,
+        apiError,
+        coupleDashboard,
+        partnerToday,
       }}
     >
       {children}
