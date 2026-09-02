@@ -13,7 +13,7 @@ const navItems = [
 
 export default function Layout({ children }) {
   const location  = useLocation();
-  const { currentUser, activeUser } = useApp();
+  const { currentUser } = useApp();
 
   return (
     <div className="min-h-screen">
@@ -71,7 +71,7 @@ export default function Layout({ children }) {
                   {currentUser.name}
                 </p>
                 <p className="text-[10px] mt-0.5" style={{ color: 'rgba(167,243,208,0.8)' }}>
-                  Partner {activeUser} · RM {currentUser.dailyBudget?.toFixed(2)}/day
+                  Personal account · RM {currentUser.dailyBudget?.toFixed(2)}/day
                 </p>
               </div>
               <Settings size={12} style={{ color: 'rgba(255,255,255,0.3)' }} className="flex-shrink-0" />

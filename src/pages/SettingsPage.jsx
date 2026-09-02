@@ -4,13 +4,14 @@ import { useToast } from '../components/Toast';
 import { Check } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { currentUser, activeUser, users, updateUser, switchUser, calcDailyBudget } = useApp();
+  const { currentUser, updateUser, calcDailyBudget } = useApp();
   const { showToast } = useToast();
 
   const [form, setForm] = useState({
     name: currentUser?.name || '',
     monthlyIncome: currentUser?.monthlyIncome || '',
-    fixedExpenses: currentUser?.fixedExpenses || '',
+    fixedExpenses: currentUser?.fixedExpenses ?? '',
+    savingsRate: currentUser?.savingsRate ?? 45,
     avatar: currentUser?.avatar || '�',
   });
   const [saved, setSaved] = useState(false);
@@ -18,7 +19,7 @@ export default function SettingsPage() {
   const avatars = ['👨', '👩', '🧑', '👦', '👧', '🐻', '🐼', '🦊'];
 
   const dailyPreview = form.monthlyIncome
-    ? calcDailyBudget(parseFloat(form.monthlyIncome) || 0, parseFloat(form.fixedExpenses) || 0)
+    ? calcDailyBudget(parseFloat(form.monthlyIncome) || 0, parseFloat(form.fixedExpenses) || 0, form.savingsRate)
     : null;
 
   function handleSave(e) {
@@ -27,20 +28,12 @@ export default function SettingsPage() {
       name: form.name,
       monthlyIncome: parseFloat(form.monthlyIncome) || 0,
       fixedExpenses: parseFloat(form.fixedExpenses) || 0,
+      savingsRate: Number(form.savingsRate),
       avatar: form.avatar,
     });
     showToast('✓ Profile saved!', 'success');
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }
-
-  function handleSwitchUser(key) {
-    switchUser(key);
-    const u = users[key];
-    setForm(u
-      ? { name: u.name, monthlyIncome: u.monthlyIncome, fixedExpenses: u.fixedExpenses, avatar: u.avatar || '�' }
-      : { name: '', monthlyIncome: '', fixedExpenses: '', avatar: key === 'A' ? '�' : '👩' }
-    );
   }
 
   const inputStyle = {
@@ -67,38 +60,7 @@ export default function SettingsPage() {
         <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full opacity-10" style={{ background: '#fff' }} />
         <h1 className="relative text-white text-xl font-bold mb-5">Settings</h1>
 
-        {/* User switch tabs */}
-        <div
-          className="flex gap-2 rounded-2xl p-1"
-          style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
-        >
-          {['A', 'B'].map(key => {
-            const u = users[key];
-            const isActive = activeUser === key;
-            return (
-              <button
-                key={key}
-                onClick={() => handleSwitchUser(key)}
-                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl transition-all"
-                style={{
-                  background: isActive ? '#fff' : 'transparent',
-                  boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
-                }}
-              >
-                <span className="text-xl">{u?.avatar || (key === 'A' ? '�' : '👩')}</span>
-                <div className="text-left flex-1">
-                  <p className="text-xs font-bold" style={{ color: isActive ? '#059669' : 'rgba(255,255,255,0.8)' }}>
-                    {u?.name || `Partner ${key}`}
-                  </p>
-                  <p className="text-[10px]" style={{ color: isActive ? '#34D399' : 'rgba(255,255,255,0.5)' }}>
-                    {u ? 'Profile ready' : 'Not set up'}
-                  </p>
-                </div>
-                {isActive && <div className="w-2 h-2 rounded-full" style={{ background: '#059669' }} />}
-              </button>
-            );
-          })}
-        </div>
+        <p className="relative text-xs" style={{ color: 'rgba(167,243,208,0.85)' }}>Your account profile</p>
       </div>
 
       <div className="px-4 -mt-10 space-y-4">
@@ -112,7 +74,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <p className="font-bold text-slate-800 text-lg">{form.name || 'Your Name'}</p>
-            <p className="text-xs text-slate-400">Partner {activeUser} · {dailyPreview ? `RM ${dailyPreview.toFixed(2)}/day` : 'Budget not set'}</p>
+            <p className="text-xs text-slate-400">Personal account · {dailyPreview ? `RM ${dailyPreview.toFixed(2)}/day` : 'Budget not set'}</p>
           </div>
         </div>
 
@@ -176,6 +138,19 @@ export default function SettingsPage() {
             />
           </div>
 
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="settings-savings-rate" className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Savings Rate</label>
+              <span className="text-sm font-bold" style={{ color: '#059669' }}>{form.savingsRate}%</span>
+            </div>
+            <input
+              id="settings-savings-rate" type="range" min="0" max="100" step="1" value={form.savingsRate}
+              onChange={e => setForm(f => ({ ...f, savingsRate: Number(e.target.value) }))}
+              className="w-full accent-emerald-600"
+            />
+            <div className="flex justify-between text-[10px] text-slate-400 mt-1"><span>0%</span><span>100%</span></div>
+          </div>
+
           {dailyPreview !== null && (
             <div
               className="rounded-2xl p-4 flex items-center justify-between"
@@ -186,7 +161,7 @@ export default function SettingsPage() {
                 <p className="text-2xl font-bold" style={{ color: '#065F46' }}>RM {dailyPreview.toFixed(2)}</p>
               </div>
               <div className="text-right text-[11px] font-medium" style={{ color: '#34D399' }}>
-                <p>Income × 55%</p>
+                <p>Income × {100 - Number(form.savingsRate)}%</p>
                 <p>− Fixed Expenses</p>
                 <p>÷ 30 days</p>
               </div>
@@ -204,8 +179,8 @@ export default function SettingsPage() {
           style={{ background: 'linear-gradient(135deg,#ECFDF5,#D1FAE5)', animationDelay: '0.12s' }}
         >
           <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#065F46' }}>📐 Budget Formula</p>
-          <p className="text-sm font-semibold font-mono" style={{ color: '#047857' }}>(Income × 55% − Fixed) ÷ 30</p>
-          <p className="text-xs mt-1" style={{ color: '#059669' }}>45% of your income is reserved for savings &amp; investments.</p>
+          <p className="text-sm font-semibold font-mono" style={{ color: '#047857' }}>((Income × (100% − Savings Rate)) − Fixed Expenses) ÷ 30</p>
+          <p className="text-xs mt-1" style={{ color: '#059669' }}>{form.savingsRate}% of your income is reserved for savings &amp; investments.</p>
         </div>
       </div>
     </div>

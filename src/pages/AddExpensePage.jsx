@@ -34,7 +34,7 @@ export default function AddExpensePage() {
   const quickAmounts = [5, 10, 15, 20, 30, 50];
 
   return (
-    <div className="min-h-screen pb-8">
+    <div className="min-h-screen pb-32">
       {/* Gradient header */}
       <div
         className="px-5 pt-12 pb-20 relative overflow-hidden"
@@ -86,7 +86,7 @@ export default function AddExpensePage() {
               onChange={e => setAmount(e.target.value)}
               placeholder="0.00"
               min="0.01" step="0.01" required
-              className="flex-1 bg-transparent text-3xl font-bold text-slate-800 focus:outline-none placeholder-slate-300"
+              className="flex-1 min-w-0 bg-transparent text-3xl font-bold text-slate-800 focus:outline-none placeholder-slate-300"
             />
           </div>
 

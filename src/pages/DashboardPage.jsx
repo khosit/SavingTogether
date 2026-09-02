@@ -53,13 +53,13 @@ export default function DashboardPage() {
   const partnerUser = users[partnerKey];
   const partnerRecord = partnerUser ? getTodayRecord(partnerKey) : null;
   const partnerSpent = partnerRecord ? getSpentAmount(partnerRecord) : 0;
-  const partnerBudget = partnerRecord ? partnerRecord.availableBudget : (partnerUser?.dailyBudget || 0);
 
   // Month-to-date calculation
   const now = new Date();
   const monthRecords = getMonthRecords(activeUser, now.getFullYear(), now.getMonth() + 1);
   const monthSpent = monthRecords.reduce((sum, r) => sum + getSpentAmount(r), 0);
-  const monthTargetSavings = currentUser ? Math.round(currentUser.monthlyIncome * 0.45) : 0;
+  const savingsRate = currentUser?.savingsRate ?? 45;
+  const monthTargetSavings = currentUser ? Math.round(currentUser.monthlyIncome * (savingsRate / 100)) : 0;
 
   const todayDate = now.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
 
@@ -215,7 +215,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <p className="text-[10px] text-emerald-600 mt-1 font-semibold truncate">
-              45% of income
+              {savingsRate}% of income
             </p>
           </div>
         </div>
@@ -368,18 +368,16 @@ export default function DashboardPage() {
             <div
               className="h-full rounded-full transition-all duration-700"
               style={{
-                width: `${Math.min((monthSpent / (currentUser.monthlyIncome * 0.55 || 1)) * 100, 100)}%`,
+                width: `${Math.min((monthSpent / (Math.max(0, (currentUser.monthlyIncome * ((100 - savingsRate) / 100)) - (currentUser.fixedExpenses || 0)) || 1)) * 100, 100)}%`,
                 background: 'linear-gradient(90deg, #059669, #10B981)',
               }}
             />
           </div>
           <p className="text-[10px] text-slate-400 mt-1.5">
-            Target savings: <span className="font-semibold text-emerald-600">RM {monthTargetSavings.toLocaleString()}</span> (45% of income)
+            Target savings: <span className="font-semibold text-emerald-600">RM {monthTargetSavings.toLocaleString()}</span> ({savingsRate}% of income)
           </p>
         </div>
       </div>
     </div>
   );
 }
-
-

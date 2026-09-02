@@ -69,7 +69,7 @@ function UserCard({ user, spent, budget, label, isActive, streak }) {
 
 export default function CouplePage() {
   const {
-    users, activeUser, partnerKey, coupleLinked, linkCouple, unlinkCouple,
+    users, activeUser, coupleLinked, linkCouple, unlinkCouple,
     coupleCode, getTodayRecord, getSpentAmount, getStreakCount,
   } = useApp();
 
@@ -115,13 +115,13 @@ export default function CouplePage() {
           <Heart size={36} className="text-white fill-white" />
         </div>
         <h1 className="text-3xl font-bold text-white mb-2">Couple Challenge</h1>
-        <p className="text-sm" style={{ color: 'rgba(167,243,208,0.85)' }}>Link accounts to challenge each other and save together</p>
+        <p className="text-sm" style={{ color: 'rgba(167,243,208,0.85)' }}>Connect with a partner to save together</p>
       </div>
 
       <div className="px-4 -mt-10 space-y-4">
         <div className="card p-6 animate-fade-up">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Couple Code</p>
-          <p className="text-xs text-slate-500 mb-4">Pick a shared code — e.g. your names. Both partners enter the same code.</p>
+          <p className="text-xs text-slate-500 mb-4">Create or enter a shared code. Your partner can use the same code on their own account.</p>
           <input
             type="text"
             value={codeInput}
@@ -138,7 +138,7 @@ export default function CouplePage() {
             disabled={!codeInput.trim()}
             className="btn-primary w-full flex items-center justify-center gap-2"
           >
-            <Link2 size={17} /> Link Couple Account
+            <Link2 size={17} /> Connect Couple Code
           </button>
         </div>
 
@@ -146,9 +146,10 @@ export default function CouplePage() {
           <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#065F46' }}>💡 How it works</p>
           <div className="space-y-2">
             {[
-              'Set up both User A & B profiles in Settings',
-              'Switch users in Settings to log each person\'s expenses',
-              'This page shows both users\' spending side by side',
+              'Your account has one personal profile',
+              'Share this code with your partner',
+              'Both accounts can use the same couple code',
+              'Connected expenses will appear side by side',
               'Challenge each other to stay within the daily limit',
             ].map((tip, i) => (
               <div key={i} className="flex items-start gap-2">

@@ -4,8 +4,10 @@ const AppContext = createContext(null);
 
 const TODAY = () => new Date().toISOString().split('T')[0];
 
-function calcDailyBudget(monthlyIncome, fixedExpenses) {
-  return Math.max(0, ((monthlyIncome * 0.55) - fixedExpenses) / 30);
+function calcDailyBudget(monthlyIncome, fixedExpenses = 0, savingsRate = 45) {
+  const rate = Math.min(100, Math.max(0, Number(savingsRate) || 0));
+  const spendableIncome = (Number(monthlyIncome) || 0) * ((100 - rate) / 100);
+  return Math.max(0, (spendableIncome - (Number(fixedExpenses) || 0)) / 30);
 }
 
 function getStorage(key, fallback) {
@@ -32,13 +34,14 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export function AppProvider({ children }) {
-  const [activeUser, setActiveUser] = useState(() => getStorage('sc_activeUser', 'A'));
-  const [users, setUsers] = useState(() =>
-    getStorage('sc_users', {
-      A: null,
-      B: null,
-    })
-  );
+  // A local account owns one profile. Keep the B slot as a reserved partner
+  // projection so a future server-backed couple connection can populate it.
+  const [activeUser] = useState('A');
+  const [users, setUsers] = useState(() => {
+    const stored = getStorage('sc_users', { A: null, B: null });
+    const ownProfile = stored?.A || stored?.B || null;
+    return { A: ownProfile, B: null };
+  });
   const [dailyRecords, setDailyRecords] = useState(() => getStorage('sc_dailyRecords', {}));
   const [coupleLinked, setCoupleLinked] = useState(() => getStorage('sc_coupleLinked', false));
   const [coupleCode, setCoupleCode] = useState(() => getStorage('sc_coupleCode', ''));
@@ -64,7 +67,7 @@ export function AppProvider({ children }) {
     const user = users[userKey];
     if (!user) return null;
 
-    const baseBudget = calcDailyBudget(user.monthlyIncome, user.fixedExpenses);
+    const baseBudget = calcDailyBudget(user.monthlyIncome, user.fixedExpenses, user.savingsRate ?? 45);
 
     // calculate carryOver from yesterday
     const yesterday = new Date(date);
@@ -119,7 +122,6 @@ export function AppProvider({ children }) {
   }
 
   function deleteExpense(expenseId) {
-    const today = TODAY();
     const record = getTodayRecord();
     if (!record) return;
     const updated = {
@@ -130,23 +132,21 @@ export function AppProvider({ children }) {
   }
 
   function setupUser(userKey, profile) {
-    const daily = calcDailyBudget(profile.monthlyIncome, profile.fixedExpenses);
+    const daily = calcDailyBudget(profile.monthlyIncome, profile.fixedExpenses, profile.savingsRate ?? 45);
     setUsers(prev => ({
       ...prev,
-      [userKey]: { ...profile, dailyBudget: daily },
+      A: { ...profile, dailyBudget: daily },
+      B: null,
     }));
   }
 
   function updateUser(profile) {
-    const daily = calcDailyBudget(profile.monthlyIncome, profile.fixedExpenses);
+    const daily = calcDailyBudget(profile.monthlyIncome, profile.fixedExpenses, profile.savingsRate ?? 45);
     setUsers(prev => ({
       ...prev,
-      [activeUser]: { ...profile, dailyBudget: daily },
+      A: { ...profile, dailyBudget: daily },
+      B: prev.B,
     }));
-  }
-
-  function switchUser(key) {
-    setActiveUser(key);
   }
 
   function linkCouple(code) {
@@ -220,7 +220,6 @@ export function AppProvider({ children }) {
         deleteExpense,
         setupUser,
         updateUser,
-        switchUser,
         linkCouple,
         unlinkCouple,
         getTodayRecord,
