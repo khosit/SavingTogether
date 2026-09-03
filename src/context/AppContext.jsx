@@ -74,7 +74,10 @@ export function AppProvider({ children }) {
           api.getCoupleDashboard(accountUserKey).catch(() => null),
         ]);
         if (cancelled) return;
-        setUsers({ A: { ...user, savingsRate: 45 }, B: null });
+        const loadedSavingsRate = user.monthlyIncome > 0
+          ? Math.round((Number(user.savingAmount) / Number(user.monthlyIncome)) * 100)
+          : 45;
+        setUsers({ A: { ...user, savingsRate: loadedSavingsRate }, B: null });
         setDailyRecords(Object.fromEntries((records || []).map(record => [`A_${record.date}`, record])));
         if (categories?.length) setExpenseCategories(categories);
         setCoupleLinked(Boolean(couple?.isLinked || couple?.coupleCode));
@@ -151,20 +154,31 @@ export function AppProvider({ children }) {
   }
 
   async function setupUser(userKey, profile) {
-    const user = await api.createUser(userKey, profile);
+    const savingAmount = (Number(profile.monthlyIncome) || 0) * ((Number(profile.savingsRate) || 0) / 100);
+    const user = await api.createUser(userKey, { ...profile, savingAmount });
     setAccountUserKey(userKey);
-    setUsers({ A: { ...user, savingsRate: profile.savingsRate ?? 45 }, B: null });
+    const actualRate = user.monthlyIncome > 0
+      ? Math.round((Number(user.savingAmount) / Number(user.monthlyIncome)) * 100)
+      : (profile.savingsRate ?? 45);
+    setUsers({ A: { ...user, savingsRate: actualRate }, B: null });
   }
 
   async function updateUser(profile) {
-    const user = await api.updateUser(accountUserKey, profile);
-    setUsers(prev => ({ ...prev, A: { ...user, savingsRate: profile.savingsRate ?? 45 } }));
+    const savingAmount = (Number(profile.monthlyIncome) || 0) * ((Number(profile.savingsRate) || 0) / 100);
+    const user = await api.updateUser(accountUserKey, { ...profile, savingAmount });
+    const actualRate = user.monthlyIncome > 0
+      ? Math.round((Number(user.savingAmount) / Number(user.monthlyIncome)) * 100)
+      : (profile.savingsRate ?? 45);
+    setUsers(prev => ({ ...prev, A: { ...user, savingsRate: actualRate } }));
   }
 
   async function login(userKey) {
     const user = await api.getUser(userKey);
     setApiError('');
-    setUsers({ A: { ...user, savingsRate: 45 }, B: null });
+    const loginSavingsRate = user.monthlyIncome > 0
+      ? Math.round((Number(user.savingAmount) / Number(user.monthlyIncome)) * 100)
+      : 45;
+    setUsers({ A: { ...user, savingsRate: loginSavingsRate }, B: null });
     setAccountUserKey(userKey);
     setIsLoading(true);
   }
@@ -199,6 +213,27 @@ export function AppProvider({ children }) {
     setCoupleDashboard(null);
     setPartnerToday(null);
   }
+
+  const refreshCoupleData = useCallback(async () => {
+    if (!accountUserKey) return;
+    try {
+      const [couple, dashboard, ownRecord] = await Promise.all([
+        api.getCouple(accountUserKey).catch(() => null),
+        api.getCoupleDashboard(accountUserKey).catch(() => null),
+        api.getToday(accountUserKey).catch(() => null),
+      ]);
+      // Refresh the logged-in user's own today record so expenses are up to date
+      if (ownRecord) setDailyRecords(prev => ({ ...prev, [`A_${ownRecord.date}`]: ownRecord }));
+      setCoupleLinked(Boolean(couple?.isLinked || couple?.coupleCode));
+      setCoupleCode(couple?.coupleCode || '');
+      setCoupleInfo(couple);
+      setCoupleDashboard(dashboard);
+      const partnerKey = couple && (couple.userKeyA === accountUserKey ? couple.userKeyB : couple.userKeyA);
+      setPartnerToday(partnerKey ? await api.getToday(partnerKey).catch(() => null) : null);
+    } catch (error) {
+      console.error('Failed to refresh couple data:', error);
+    }
+  }, [accountUserKey]);
 
   function getMonthRecords(userKey, year, month) {
     const prefix = `${userKey}_${year}-${String(month).padStart(2, '0')}`;
@@ -267,6 +302,7 @@ export function AppProvider({ children }) {
         logout,
         linkCouple,
         unlinkCouple,
+        refreshCoupleData,
         getTodayRecord,
         getOrCreateDayRecord,
         getMonthRecords,

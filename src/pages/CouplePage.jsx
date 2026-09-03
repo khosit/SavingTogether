@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, Link2, Unlink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router-dom';
@@ -70,40 +70,71 @@ function UserCard({ user, spent, budget, label, isActive, streak }) {
 export default function CouplePage() {
   const {
     users, accountUserKey, coupleLinked, linkCouple, unlinkCouple, coupleCode, coupleInfo, coupleDashboard, partnerToday,
-    getTodayRecord, getSpentAmount, getStreakCount,
+    getTodayRecord, getSpentAmount, getStreakCount, refreshCoupleData,
   } = useApp();
 
   const [codeInput, setCodeInput] = useState('');
 
-  const ownSide = coupleInfo?.userKeyB === accountUserKey ? coupleDashboard?.userB : coupleDashboard?.userA;
-  const partnerSide = coupleInfo?.userKeyB === accountUserKey ? coupleDashboard?.userA : coupleDashboard?.userB;
-  const userA = users.A;
-  const userB = users.B || (partnerSide ? {
-    name: partnerSide.name,
-    avatar: partnerSide.avatar,
-    dailyBudget: partnerSide.budget,
-  } : null);
+  // Refresh couple data every time the user navigates to this page
+  useEffect(() => {
+    refreshCoupleData();
+  }, [refreshCoupleData]);
 
-  function getRecordData(key) {
-    const summary = key === 'A' ? ownSide : partnerSide;
-    if (summary) return { rec: null, spent: summary.spent, budget: summary.budget };
-    const rec = getTodayRecord(key);
-    const spent = rec ? getSpentAmount(rec) : 0;
-    const budget = rec ? rec.availableBudget : (users[key]?.dailyBudget || 0);
-    return { rec, spent, budget };
+  // === Match dashboard sides by name ===
+  // The API's coupleDashboard.userA/userB labels are fixed server-side and may
+  // NOT correspond to coupleInfo.userKeyA/userKeyB. Name-matching is the most
+  // reliable way to find which dashboard side belongs to the logged-in user.
+  const myNameLower = users.A?.name?.toLowerCase() || '';
+  const dashAName   = coupleDashboard?.userA?.name?.toLowerCase() || '';
+  const dashBName   = coupleDashboard?.userB?.name?.toLowerCase() || '';
+
+  let ownDashSide, partnerDashSide;
+  if (myNameLower && dashAName === myNameLower) {
+    ownDashSide     = coupleDashboard?.userA;
+    partnerDashSide = coupleDashboard?.userB;
+  } else if (myNameLower && dashBName === myNameLower) {
+    ownDashSide     = coupleDashboard?.userB;
+    partnerDashSide = coupleDashboard?.userA;
+  } else {
+    // Fallback to coupleInfo key comparison when names don't match
+    const isAccountUserB = coupleInfo?.userKeyB === accountUserKey;
+    ownDashSide     = isAccountUserB ? coupleDashboard?.userB : coupleDashboard?.userA;
+    partnerDashSide = isAccountUserB ? coupleDashboard?.userA : coupleDashboard?.userB;
   }
 
-  const dataA = getRecordData('A');
-  const dataB = getRecordData('B');
-  const ownToday = getTodayRecord('A');
+  // === LEFT CARD: always the logged-in user ===
+  // Use dashboard data for stats (authoritative); fall back to local today record.
+  const ownToday  = getTodayRecord('A');
+  const ownSpent  = ownDashSide?.spent  ?? (ownToday ? getSpentAmount(ownToday) : 0);
+  const ownBudget = ownDashSide?.budget ?? ownToday?.availableBudget ?? (users.A?.dailyBudget || 0);
 
-  const combined = dataA.spent + dataB.spent;
-  const combinedBudget = dataA.budget + dataB.budget;
+  // === RIGHT CARD: partner ===
+  // Use dashboard data for stats — this avoids any partnerKey resolution issues
+  // where partnerToday might accidentally contain the logged-in user's own data.
+  // partnerToday is still used for the detailed expense list below.
+  const partnerSpent  = partnerDashSide?.spent  ?? (partnerToday ? getSpentAmount(partnerToday) : 0);
+  const partnerBudget = partnerDashSide?.budget ?? (partnerToday?.availableBudget || 0);
+
+  // Left card: logged-in user's own profile (always correct)
+  const userA = users.A;
+
+  // Right card: partner's name/avatar from the correctly matched dashboard side
+  const userB = users.B || (partnerDashSide ? {
+    name: partnerDashSide.name,
+    avatar: partnerDashSide.avatar,
+    dailyBudget: partnerBudget,
+  } : null);
+
+  const dataA = { spent: ownSpent, budget: ownBudget };
+  const dataB = { spent: partnerSpent, budget: partnerBudget };
+
+  const combined          = ownSpent + partnerSpent;
+  const combinedBudget    = ownBudget + partnerBudget;
   const combinedRemaining = combinedBudget - combined;
-  const isOver = combinedRemaining < 0;
+  const isOver            = combinedRemaining < 0;
 
-  const streakA = ownSide?.streak ?? getStreakCount('A');
-  const streakB = partnerSide?.streak ?? getStreakCount('B');
+  const streakA = ownDashSide?.streak ?? getStreakCount('A');
+  const streakB = partnerDashSide?.streak ?? 0;
 
   async function handleLink() {
     if (!codeInput.trim()) return;
@@ -239,11 +270,11 @@ export default function CouplePage() {
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Today's Expenses</p>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'You', record: ownToday },
-              { label: 'Partner', record: partnerToday },
+              { label: userA.name || 'You', record: ownToday },
+              { label: userB?.name || 'Partner', record: partnerToday },
             ].map(({ label, record }) => (
               <div key={label} className="rounded-2xl p-3" style={{ background: '#F0FDF4' }}>
-                <p className="text-xs font-bold text-slate-700 mb-2">{label}</p>
+                <p className="text-xs font-bold text-slate-700 mb-2 truncate">{label}</p>
                 {!record?.expenses?.length ? (
                   <p className="text-[11px] text-slate-400">No expenses yet</p>
                 ) : (
