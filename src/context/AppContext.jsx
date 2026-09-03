@@ -24,6 +24,18 @@ function setStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function getPartnerUserKey(couple, accountKey) {
+  if (!couple || !accountKey) return null;
+
+  const normalizedAccountKey = String(accountKey).trim().toLowerCase();
+  const members = [couple.userKeyA, couple.userKeyB].filter(Boolean);
+  const accountMember = members.find(member => String(member).trim().toLowerCase() === normalizedAccountKey);
+
+  return accountMember
+    ? members.find(member => String(member).trim().toLowerCase() !== normalizedAccountKey) || null
+    : null;
+}
+
 const EXPENSE_CATEGORIES = [
   { id: 'food', label: 'Food & Drinks', icon: '🍜', color: '#f97316' },
   { id: 'transport', label: 'Transport', icon: '🚗', color: '#3b82f6' },
@@ -84,7 +96,7 @@ export function AppProvider({ children }) {
         setCoupleCode(couple?.coupleCode || '');
         setCoupleInfo(couple);
         setCoupleDashboard(dashboard);
-        const partnerKey = couple && (couple.userKeyA === accountUserKey ? couple.userKeyB : couple.userKeyA);
+        const partnerKey = getPartnerUserKey(couple, accountUserKey);
         setPartnerToday(partnerKey ? await api.getToday(partnerKey).catch(() => null) : null);
       } catch (error) {
         if (!cancelled) setApiError(error.message);
@@ -201,7 +213,7 @@ export function AppProvider({ children }) {
     setCoupleLinked(Boolean(couple?.isLinked || couple?.coupleCode || code));
     setCoupleInfo(couple);
     setCoupleDashboard(await api.getCoupleDashboard(accountUserKey).catch(() => null));
-    const partnerKey = couple?.userKeyA === accountUserKey ? couple?.userKeyB : couple?.userKeyA;
+    const partnerKey = getPartnerUserKey(couple, accountUserKey);
     setPartnerToday(partnerKey ? await api.getToday(partnerKey).catch(() => null) : null);
   }
 
@@ -228,7 +240,7 @@ export function AppProvider({ children }) {
       setCoupleCode(couple?.coupleCode || '');
       setCoupleInfo(couple);
       setCoupleDashboard(dashboard);
-      const partnerKey = couple && (couple.userKeyA === accountUserKey ? couple.userKeyB : couple.userKeyA);
+      const partnerKey = getPartnerUserKey(couple, accountUserKey);
       setPartnerToday(partnerKey ? await api.getToday(partnerKey).catch(() => null) : null);
     } catch (error) {
       console.error('Failed to refresh couple data:', error);
