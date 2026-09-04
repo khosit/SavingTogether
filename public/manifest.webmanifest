@@ -1,0 +1,23 @@
+{
+  "name": "SaveTogether",
+  "short_name": "SaveTogether",
+  "description": "Save and plan together.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5fbe9",
+  "theme_color": "#0f8f43",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
