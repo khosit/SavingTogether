@@ -9,7 +9,7 @@ export default function AddExpensePage() {
   const { addExpense, EXPENSE_CATEGORIES, currentUser, getTodayRecord, getSpentAmount } = useApp();
   const { showToast } = useToast();
 
-  const [amount, setAmount]       = useState('');
+  const [amountDigits, setAmountDigits] = useState('');
   const [category, setCategory]   = useState('food');
   const [note, setNote]           = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -18,8 +18,21 @@ export default function AddExpensePage() {
   const spent       = record ? getSpentAmount(record) : 0;
   const budget      = record ? record.availableBudget : (currentUser?.dailyBudget || 0);
   const remaining   = budget - spent;
+  const amount      = amountDigits ? (Number(amountDigits) / 100).toFixed(2) : '';
   const willOver    = amount && parseFloat(amount) > remaining;
   const selectedCat = EXPENSE_CATEGORIES.find(c => c.id === category) || EXPENSE_CATEGORIES[0];
+
+  function handleAmountKeyDown(e) {
+    if (/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setAmountDigits(current => `${current}${e.key}`.replace(/^0+(?=\d)/, '').slice(-9));
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      setAmountDigits(current => current.slice(0, -1));
+    } else if (!['Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault();
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -81,11 +94,13 @@ export default function AddExpensePage() {
           >
             <span className="text-xl font-bold" style={{ color: '#10B981' }}>RM</span>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={amount}
-              onChange={e => setAmount(e.target.value)}
+              onKeyDown={handleAmountKeyDown}
+              readOnly
               placeholder="0.00"
-              min="0.01" step="0.01" required
+              required
               className="flex-1 min-w-0 bg-transparent text-3xl font-bold text-slate-800 focus:outline-none placeholder-slate-300"
             />
           </div>
@@ -103,14 +118,14 @@ export default function AddExpensePage() {
             {quickAmounts.map(q => (
               <button
                 key={q} type="button"
-                onClick={() => setAmount(String(q))}
+                onClick={() => setAmountDigits(String(q * 100))}
                 className="px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all"
                 style={{
-                  background: amount === String(q)
+                  background: Number(amount) === q
                     ? 'linear-gradient(135deg,#059669,#047857)'
                     : '#ECFDF5',
-                  color: amount === String(q) ? '#fff' : '#059669',
-                  boxShadow: amount === String(q) ? '0 4px 12px rgba(5,150,105,0.3)' : 'none',
+                  color: Number(amount) === q ? '#fff' : '#059669',
+                  boxShadow: Number(amount) === q ? '0 4px 12px rgba(5,150,105,0.3)' : 'none',
                 }}
               >
                 RM {q}

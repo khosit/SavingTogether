@@ -165,6 +165,14 @@ export function AppProvider({ children }) {
     if (record) setDailyRecords(prev => ({ ...prev, [`A_${record.date}`]: record }));
   }
 
+  async function loadRecord(userKey, date) {
+    const record = await api.getRecord(accountUserKey, date);
+    if (record) {
+      setDailyRecords(prev => ({ ...prev, [`${userKey}_${record.date}`]: record }));
+    }
+    return record;
+  }
+
   async function setupUser(userKey, profile) {
     const savingAmount = (Number(profile.monthlyIncome) || 0) * ((Number(profile.savingsRate) || 0) / 100);
     const user = await api.createUser(userKey, { ...profile, savingAmount });
@@ -308,6 +316,7 @@ export function AppProvider({ children }) {
         EXPENSE_CATEGORIES: expenseCategories,
         addExpense,
         deleteExpense,
+        loadRecord,
         setupUser,
         updateUser,
         login,

@@ -42,6 +42,7 @@ export const api = {
   }),
   getToday: userKey => request(`/api/users/${encodeURIComponent(userKey)}/records/today`),
   getRecords: userKey => request(`/api/users/${encodeURIComponent(userKey)}/records`),
+  getRecord: (userKey, date) => request(`/api/users/${encodeURIComponent(userKey)}/records/${encodeURIComponent(date)}`),
   addExpense: (userKey, expense) => request(`/api/users/${encodeURIComponent(userKey)}/expenses`, {
     method: 'POST',
     body: JSON.stringify(expense),

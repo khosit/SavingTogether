@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function HistoryPage() {
-  const { activeUser, currentUser, getMonthRecords, getSpentAmount, EXPENSE_CATEGORIES } = useApp(); // currentUser used for user indicator badge
+  const { activeUser, currentUser, getMonthRecords, getSpentAmount, EXPENSE_CATEGORIES, loadRecord } = useApp(); // currentUser used for user indicator badge
 
   const now = new Date();
   const [viewYear, setViewYear]   = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
+  const [expandedDate, setExpandedDate] = useState(null);
+  const [loadingDate, setLoadingDate] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
   const records    = getMonthRecords(activeUser, viewYear, viewMonth);
   const monthLabel = new Date(viewYear, viewMonth - 1, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
@@ -19,6 +22,23 @@ export default function HistoryPage() {
   function nextMonth() {
     if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1); }
     else setViewMonth(m => m + 1);
+  }
+
+  async function toggleDate(date) {
+    setLoadError('');
+    if (expandedDate === date) {
+      setExpandedDate(null);
+      return;
+    }
+    setExpandedDate(date);
+    setLoadingDate(date);
+    try {
+      await loadRecord(activeUser, date);
+    } catch (error) {
+      setLoadError(error.message || 'Unable to load expenses');
+    } finally {
+      setLoadingDate(null);
+    }
   }
 
   function getCatInfo(id) {
@@ -165,18 +185,23 @@ export default function HistoryPage() {
                     className="px-5 py-3.5"
                     style={{ borderBottom: idx < records.length - 1 ? '1px solid #ECFDF5' : 'none' }}
                   >
+                    <button type="button" onClick={() => toggleDate(record.date)} className="w-full text-left">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <p className="text-xs font-semibold text-slate-600">{dateLabel}</p>
-                        <p className="text-[10px] text-slate-400">{record.expenses.length} expense{record.expenses.length !== 1 ? 's' : ''}</p>
+                        <p className="text-[10px] text-slate-400">{record.expenses.length} expense{record.expenses.length !== 1 ? 's' : ''} · {expandedDate === record.date ? 'Hide details' : 'View details'}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-3 text-right">
+                        <div>
                         <p className="text-sm font-bold text-slate-800">RM {spent.toFixed(2)}</p>
                         <p className={`text-[10px] font-semibold ${over ? 'text-rose-500' : 'text-emerald-600'}`}>
                           {over ? `⚠️ Over RM${(spent - record.availableBudget).toFixed(2)}` : `✓ RM${(record.availableBudget - spent).toFixed(2)} left`}
                         </p>
+                        </div>
+                        <ChevronDown size={16} className={`text-emerald-600 transition-transform ${expandedDate === record.date ? 'rotate-180' : ''}`} />
                       </div>
                     </div>
+                    </button>
                     <div className="w-full h-2 rounded-full" style={{ background: over ? '#FEE2E2' : '#D1FAE5' }}>
                       <div
                         className="h-full rounded-full transition-all"
@@ -188,6 +213,29 @@ export default function HistoryPage() {
                         }}
                       />
                     </div>
+                    {expandedDate === record.date && (
+                      <div className="mt-3 rounded-2xl p-3 space-y-2" style={{ background: '#F0FDF4' }}>
+                        {loadingDate === record.date ? (
+                          <p className="text-xs text-slate-400">Loading expense details…</p>
+                        ) : loadError ? (
+                          <p className="text-xs text-rose-500">{loadError}</p>
+                        ) : record.expenses.length === 0 ? (
+                          <p className="text-xs text-slate-400">No expenses recorded.</p>
+                        ) : record.expenses.map(expense => {
+                          const cat = getCatInfo(expense.category);
+                          return <div key={expense.id} className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span>{cat.icon}</span>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-700 truncate">{expense.note || cat.label}</p>
+                                <p className="text-[10px] text-slate-400">{cat.label}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs font-bold text-slate-700 whitespace-nowrap">RM {Number(expense.amount).toFixed(2)}</p>
+                          </div>;
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
