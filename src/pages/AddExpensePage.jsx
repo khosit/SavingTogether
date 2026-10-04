@@ -34,6 +34,17 @@ export default function AddExpensePage() {
     }
   }
 
+  function handleAmountChange(e) {
+    const enteredDigits = e.target.value.replace(/\D/g, '');
+    const displayedDigits = amountDigits.padStart(3, '0');
+
+    if (enteredDigits.length > displayedDigits.length) {
+      setAmountDigits(current => `${current}${enteredDigits.slice(-1)}`.slice(-9));
+    } else if (enteredDigits.length < displayedDigits.length) {
+      setAmountDigits(current => current.slice(0, -1));
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const val = parseFloat(amount);
@@ -97,8 +108,8 @@ export default function AddExpensePage() {
               type="text"
               inputMode="decimal"
               value={amount}
+              onChange={handleAmountChange}
               onKeyDown={handleAmountKeyDown}
-              readOnly
               placeholder="0.00"
               required
               className="flex-1 min-w-0 bg-transparent text-3xl font-bold text-slate-800 focus:outline-none placeholder-slate-300"
