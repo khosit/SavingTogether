@@ -3,7 +3,17 @@ import { api } from '../lib/api';
 
 const AppContext = createContext(null);
 
-const TODAY = () => new Date().toISOString().split('T')[0];
+// Calendar dates in the app are local user dates, not UTC dates. Using
+// toISOString() here makes the app show yesterday's record after midnight in
+// time zones ahead of UTC (for example, Malaysia UTC+8).
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+const TODAY = () => getLocalDateString();
 
 function calcDailyBudget(monthlyIncome, fixedExpenses = 0, savingsRate = 45) {
   const rate = Math.min(100, Math.max(0, Number(savingsRate) || 0));
@@ -128,7 +138,7 @@ export function AppProvider({ children }) {
     // calculate carryOver from yesterday
     const yesterday = new Date(date);
     yesterday.setDate(yesterday.getDate() - 1);
-    const ydStr = yesterday.toISOString().split('T')[0];
+    const ydStr = getLocalDateString(yesterday);
     const ydKey = getUserRecordKey(userKey, ydStr);
     const ydRecord = dailyRecords[ydKey];
 
@@ -275,7 +285,7 @@ export function AppProvider({ children }) {
     let streak = 0;
     const d = new Date();
     while (true) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const key = getUserRecordKey(userKey, dateStr);
       const rec = dailyRecords[key];
       if (!rec) break;
